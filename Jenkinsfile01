@@ -92,7 +92,7 @@ pipeline {
                     sh '''
                         curl -X POST -H "Authorization: Bearer $SLACK_TOKEN" \
                              -H "Content-type: application/json" \
-                             --data '{"channel":"#jenkins-integration","text":"✅ *Build Successful* - hiring-app deployed to Tomcat!"}' \
+                             --data '{"channel":"#jenkins-integration","text":"*Build Successful* - hiring-app deployed to Tomcat!"}' \
                              https://slack.com/api/chat.postMessage
                     '''
                 }
@@ -102,15 +102,15 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline finished successfully.'
+            echo 'Pipeline finished successfully.'
         }
         failure {
-            echo '❌ Pipeline failed.'
+            echo 'Pipeline failed.'
             withCredentials([string(credentialsId: 'slack_token', variable: 'SLACK_TOKEN')]) {
                 sh '''
                     curl -X POST -H "Authorization: Bearer $SLACK_TOKEN" \
                          -H "Content-type: application/json" \
-                         --data '{"channel":"#jenkins-integration","text":"❌ *Build Failed* - hiring-app"}' \
+                         --data '{"channel":"#jenkins-integration","text":" *Build Failed* - hiring-app"}' \
                          https://slack.com/api/chat.postMessage
                 '''
             }
