@@ -22,7 +22,7 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('Sonar') {
+                withSonarQubeEnv('sonar') {
                     sh """
                         ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
                         -Dsonar.projectKey=hiring-app \
