@@ -4,11 +4,11 @@ pipeline {
     environment {
         MAVEN_HOME = tool 'Maven_3.9.4'
         SONAR_SCANNER_HOME = "/opt/sonar_scanner"
-        SONAR_HOST_URL = "http://54.91.71.202:9000"
+        SONAR_HOST_URL = "54.91.71.202:9000"
         SONAR_LOGIN = credentials('sonar-token')
-        NEXUS_URL = "http://3.88.54.126:8082/repository/maven-snapshot05/"
+        NEXUS_URL = "34.201.219.251:8082//repository/maven-snapshot05/"
         NEXUS_CREDENTIALS = credentials('Nexus_server')
-        TOMCAT_HOST = "3.88.54.126"
+        TOMCAT_HOST = "3.88.54.126:8080"
         TOMCAT_CREDENTIALS = credentials('tomcat-token')
         TOMCAT_WEBAPPS_DIR = "/opt/tomcat/webapps"
     }
