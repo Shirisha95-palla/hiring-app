@@ -1,0 +1,101 @@
+pipeline {
+    agent any
+
+    environment {
+        MAVEN_HOME = tool 'Maven_3.9.4'
+        SONAR_SCANNER_HOME = "/opt/sonar_scanner"
+        SONAR_HOST_URL = "http://54.91.71.202:9000"
+        SONAR_LOGIN = credentials('sonar-token')
+        NEXUS_URL = "http://3.88.54.126:8082/repository/maven-snapshot05/"
+        NEXUS_CREDENTIALS = credentials('Nexus_server')
+        TOMCAT_HOST = "3.88.54.126"
+        TOMCAT_CREDENTIALS = credentials('tomcat-token')
+        TOMCAT_WEBAPPS_DIR = "/opt/tomcat/webapps"
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/sripriya7-ande/hiring-app.git'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                        ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
+                        -Dsonar.projectKey=hiring-app \
+                        -Dsonar.sources=src \
+                        -Dsonar.java.binaries=target/classes \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.login=${SONAR_LOGIN}
+                    """
+                }
+            }
+        }
+
+        stage('Maven Build') {
+            steps {
+                sh "${MAVEN_HOME}/bin/mvn clean package -DskipTests"
+            }
+        }
+
+        stage('Upload WAR to Nexus Snapshot') {
+            when {
+                expression { return env.NEXUS_URL.contains("snapshot") } // ensure snapshot only
+            }
+            steps {
+                writeFile file: 'settings.xml', text: """
+                <settings>
+                  <servers>
+                    <server>
+                      <id>nexus-snapshot</id>
+                      <username>${NEXUS_CREDENTIALS_USR}</username>
+                      <password>${NEXUS_CREDENTIALS_PSW}</password>
+                    </server>
+                  </servers>
+                </settings>
+                """
+
+                sh """
+                ${MAVEN_HOME}/bin/mvn deploy:deploy-file \
+                  -DgroupId=in.javahome \
+                  -DartifactId=hiring \
+                  -Dversion=0.1-SNAPSHOT \\
+                  -Dpackaging=war \
+                  -Dfile=target/hiring.war \
+                  -DrepositoryId=nexus-snapshot \
+                  -Durl=${NEXUS_URL} \
+                  -DgeneratePom=true \
+                  --settings settings.xml
+                """
+            }
+        }
+
+        stage('Deploy WAR to Tomcat') {
+            steps {
+                sshagent (credentials: ['tomcat-token']) {
+                    sh """
+                    scp -o StrictHostKeyChecking=no target/hiring.war ${TOMCAT_CREDENTIALS_USR}@${TOMCAT_HOST}:${TOMCAT_WEBAPPS_DIR}/
+                    """
+                }
+            }
+        }
+
+        stage('Notify') {
+            steps {
+                echo '✅ WAR built, analyzed, uploaded, and deployed to Tomcat!'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline finished successfully.'
+        }
+        failure {
+            echo '❌ Pipeline failed.'
+        }
+    }
+}
