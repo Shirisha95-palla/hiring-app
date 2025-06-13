@@ -48,17 +48,16 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'Nexus_server', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
                     writeFile file: 'settings.xml', text: """
-                    <settings>
-                      <servers>
-                        <server>
-                          <id>nexus-snapshot</id>
-                          <username>${NEXUS_USER}</username>
-                          <password>${NEXUS_PASS}</password>
-                        </server>
-                      </servers>
-                    </settings>
+                        <settings>
+                          <servers>
+                            <server>
+                              <id>nexus-snapshot</id>
+                              <username>${NEXUS_USER}</username>
+                              <password>${NEXUS_PASS}</password>
+                            </server>
+                          </servers>
+                        </settings>
                     """
-
                     sh """
                         ${MAVEN_HOME}/bin/mvn deploy:deploy-file \\
                           -DgroupId=in.javahome \\
@@ -87,9 +86,16 @@ pipeline {
             }
         }
 
-        stage('Notify') {
+        stage('Slack Notify') {
             steps {
-                echo '✅ WAR built, analyzed, uploaded, and deployed to Tomcat!'
+                withCredentials([string(credentialsId: 'slacktoken', variable: 'SLACK_TOKEN')]) {
+                    sh '''
+                        curl -X POST -H "Authorization: Bearer $SLACK_TOKEN" \
+                             -H "Content-type: application/json" \
+                             --data '{"channel":"#jenkins-integration","text":"✅ *Build Successful* - hiring-app deployed to Tomcat!"}' \
+                             https://slack.com/api/chat.postMessage
+                    '''
+                }
             }
         }
     }
@@ -100,6 +106,14 @@ pipeline {
         }
         failure {
             echo '❌ Pipeline failed.'
+            withCredentials([string(credentialsId: 'slacktoken', variable: 'SLACK_TOKEN')]) {
+                sh '''
+                    curl -X POST -H "Authorization: Bearer $SLACK_TOKEN" \
+                         -H "Content-type: application/json" \
+                         --data '{"channel":"#jenkins-integration","text":"❌ *Build Failed* - hiring-app"}' \
+                         https://slack.com/api/chat.postMessage
+                '''
+            }
         }
     }
 }
