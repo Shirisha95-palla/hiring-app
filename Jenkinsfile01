@@ -7,7 +7,7 @@ pipeline {
         SONAR_HOST_URL = "http://54.91.71.202:9000"
         NEXUS_URL = "http://34.201.219.251:8082/repository/maven-snapshot05/"
         TOMCAT_HOST = "3.88.54.126"
-        TOMCAT_PORT = "8080"
+        TOMCAT_PORT = "8443"
         TOMCAT_WEBAPPS_DIR = "/opt/tomcat/webapps"
     }
 
