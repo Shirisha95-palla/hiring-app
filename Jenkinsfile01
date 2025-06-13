@@ -5,7 +5,7 @@ pipeline {
         MAVEN_HOME = tool 'Maven_3.9.4'
         SONAR_SCANNER_HOME = "/opt/sonar_scanner"
         SONAR_HOST_URL = "http://54.91.71.202:9000/"
-        SONAR_LOGIN = credentials('sonar-token')
+        SONAR_LOGIN = credentials('sonar-new')
         NEXUS_URL = "34.201.219.251:8082//repository/maven-snapshot05/"
         NEXUS_CREDENTIALS = credentials('Nexus_server')
         TOMCAT_HOST = "3.88.54.126:8080"
@@ -28,8 +28,8 @@ pipeline {
                         -Dsonar.projectKey=hiring-app \
                         -Dsonar.sources=src \
                         -Dsonar.java.binaries=target/classes \
-                        -Dsonar.host.url=${SONAR_HOST_URL} \
-                        -Dsonar.login=${sonar-new}
+                        -Dsonar.host.url=http://54.91.71.202:9000/ \
+                        -Dsonar.login=$sonar-new
                     """
                 }
             }
