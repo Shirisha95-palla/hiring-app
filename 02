@@ -1,0 +1,105 @@
+pipeline {
+    agent any
+
+    environment {
+        MAVEN_HOME = tool 'Maven_3.9.4'
+        SONAR_SCANNER_HOME = "/opt/sonar_scanner"
+        SONAR_HOST_URL = "http://54.91.71.202:9000"
+        NEXUS_URL = "http://34.201.219.251:8082/repository/maven-snapshot05/"
+        TOMCAT_HOST = "3.88.54.126"
+        TOMCAT_PORT = "8443"
+        TOMCAT_WEBAPPS_DIR = "/opt/tomcat/webapps"
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/sripriya7-ande/hiring-app.git'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    withCredentials([string(credentialsId: 'sonar-new', variable: 'SONAR_TOKEN')]) {
+                        sh """
+                            ${SONAR_SCANNER_HOME}/bin/sonar-scanner \\
+                            -Dsonar.projectKey=hiring-app \\
+                            -Dsonar.sources=src \\
+                            -Dsonar.java.binaries=target/classes \\
+                            -Dsonar.host.url=${SONAR_HOST_URL} \\
+                            -Dsonar.login=${SONAR_TOKEN}
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Maven Build') {
+            steps {
+                sh "${MAVEN_HOME}/bin/mvn clean package -DskipTests"
+            }
+        }
+
+        stage('Upload WAR to Nexus Snapshot') {
+            when {
+                expression { return env.NEXUS_URL.contains("snapshot") }
+            }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'Nexus_server', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                    writeFile file: 'settings.xml', text: """
+                    <settings>
+                      <servers>
+                        <server>
+                          <id>nexus-snapshot</id>
+                          <username>${NEXUS_USER}</username>
+                          <password>${NEXUS_PASS}</password>
+                        </server>
+                      </servers>
+                    </settings>
+                    """
+
+                    sh """
+                        ${MAVEN_HOME}/bin/mvn deploy:deploy-file \\
+                          -DgroupId=in.javahome \\
+                          -DartifactId=hiring \\
+                          -Dversion=0.1-SNAPSHOT \\
+                          -Dpackaging=war \\
+                          -Dfile=target/hiring.war \\
+                          -DrepositoryId=nexus-snapshot \\
+                          -Durl=${NEXUS_URL} \\
+                          -DgeneratePom=true \\
+                          --settings settings.xml
+                    """
+                }
+            }
+        }
+
+        stage('Deploy WAR to Tomcat') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'tomcat-token', usernameVariable: 'TOMCAT_USER', passwordVariable: 'TOMCAT_PASS')]) {
+                    sh """
+                        curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
+                        --upload-file target/hiring.war \\
+                        http://${TOMCAT_HOST}:${TOMCAT_PORT}/manager/text/deploy?path=/hiring&update=true
+                    """
+                }
+            }
+        }
+
+        stage('Notify') {
+            steps {
+                echo '✅ WAR built, analyzed, uploaded, and deployed to Tomcat!'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline finished successfully.'
+        }
+        failure {
+            echo '❌ Pipeline failed.'
+        }
+    }
+}
