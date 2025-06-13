@@ -4,12 +4,10 @@ pipeline {
     environment {
         MAVEN_HOME = tool 'Maven_3.9.4'
         SONAR_SCANNER_HOME = "/opt/sonar_scanner"
-        SONAR_HOST_URL = "http://54.91.71.202:9000/"
-        SONAR_LOGIN = credentials('sonar-new')
-        NEXUS_URL = "34.201.219.251:8082//repository/maven-snapshot05/"
-        NEXUS_CREDENTIALS = credentials('Nexus_server')
-        TOMCAT_HOST = "3.88.54.126:8080"
-        TOMCAT_CREDENTIALS = credentials('tomcat-token')
+        SONAR_HOST_URL = "http://54.91.71.202:9000"
+        NEXUS_URL = "http://34.201.219.251:8082/repository/maven-snapshot05/"
+        TOMCAT_HOST = "3.88.54.126"
+        TOMCAT_PORT = "8080"
         TOMCAT_WEBAPPS_DIR = "/opt/tomcat/webapps"
     }
 
@@ -23,14 +21,16 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonar') {
-                    sh """
-                        ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
-                        -Dsonar.projectKey=hiring-app \
-                        -Dsonar.sources=src \
-                        -Dsonar.java.binaries=target/classes \
-                        -Dsonar.host.url=http://54.91.71.202:9000/ \
-                        -Dsonar.login=$sonar-new
-                    """
+                    withCredentials([string(credentialsId: 'sonar-new', variable: 'SONAR_TOKEN')]) {
+                        sh """
+                            ${SONAR_SCANNER_HOME}/bin/sonar-scanner \\
+                            -Dsonar.projectKey=hiring-app \\
+                            -Dsonar.sources=src \\
+                            -Dsonar.java.binaries=target/classes \\
+                            -Dsonar.host.url=${SONAR_HOST_URL} \\
+                            -Dsonar.login=${SONAR_TOKEN}
+                        """
+                    }
                 }
             }
         }
@@ -43,41 +43,45 @@ pipeline {
 
         stage('Upload WAR to Nexus Snapshot') {
             when {
-                expression { return env.NEXUS_URL.contains("snapshot") } // ensure snapshot only
+                expression { return env.NEXUS_URL.contains("snapshot") }
             }
             steps {
-                writeFile file: 'settings.xml', text: """
-                <settings>
-                  <servers>
-                    <server>
-                      <id>nexus-snapshot</id>
-                      <username>${NEXUS_CREDENTIALS_USR}</username>
-                      <password>${NEXUS_CREDENTIALS_PSW}</password>
-                    </server>
-                  </servers>
-                </settings>
-                """
+                withCredentials([usernamePassword(credentialsId: 'Nexus_server', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                    writeFile file: 'settings.xml', text: """
+                    <settings>
+                      <servers>
+                        <server>
+                          <id>nexus-snapshot</id>
+                          <username>${NEXUS_USER}</username>
+                          <password>${NEXUS_PASS}</password>
+                        </server>
+                      </servers>
+                    </settings>
+                    """
 
-                sh """
-                ${MAVEN_HOME}/bin/mvn deploy:deploy-file \
-                  -DgroupId=in.javahome \
-                  -DartifactId=hiring \
-                  -Dversion=0.1-SNAPSHOT \\
-                  -Dpackaging=war \
-                  -Dfile=target/hiring.war \
-                  -DrepositoryId=nexus-snapshot \
-                  -Durl=${NEXUS_URL} \
-                  -DgeneratePom=true \
-                  --settings settings.xml
-                """
+                    sh """
+                        ${MAVEN_HOME}/bin/mvn deploy:deploy-file \\
+                          -DgroupId=in.javahome \\
+                          -DartifactId=hiring \\
+                          -Dversion=0.1-SNAPSHOT \\
+                          -Dpackaging=war \\
+                          -Dfile=target/hiring.war \\
+                          -DrepositoryId=nexus-snapshot \\
+                          -Durl=${NEXUS_URL} \\
+                          -DgeneratePom=true \\
+                          --settings settings.xml
+                    """
+                }
             }
         }
 
         stage('Deploy WAR to Tomcat') {
             steps {
-                sshagent (credentials: ['tomcat-token']) {
+                withCredentials([usernamePassword(credentialsId: 'tomcat-token', usernameVariable: 'TOMCAT_USER', passwordVariable: 'TOMCAT_PASS')]) {
                     sh """
-                    scp -o StrictHostKeyChecking=no target/hiring.war ${TOMCAT_CREDENTIALS_USR}@${TOMCAT_HOST}:${TOMCAT_WEBAPPS_DIR}/
+                        curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
+                        --upload-file target/hiring.war \\
+                        http://${TOMCAT_HOST}:${TOMCAT_PORT}/manager/text/deploy?path=/hiring&update=true
                     """
                 }
             }
