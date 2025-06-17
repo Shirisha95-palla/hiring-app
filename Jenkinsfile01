@@ -20,8 +20,8 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonar') {
-                    withCredentials([string(credentialsId: 'sonar-new', variable: 'SONAR_TOKEN')]) {
+                withSonarQubeEnv('sonarqube') {
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         sh """
                             ${SONAR_SCANNER_HOME}/bin/sonar-scanner \\
                             -Dsonar.projectKey=hiring-app \\
