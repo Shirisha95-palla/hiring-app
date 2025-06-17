@@ -46,7 +46,7 @@ pipeline {
                 expression { return env.NEXUS_URL.contains("snapshot") }
             }
             steps {
-                withCredentials([usernamePassword(credentialsId: 'Nexus_server', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'nexus', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
                     writeFile file: 'settings.xml', text: """
                         <settings>
                           <servers>
@@ -76,7 +76,7 @@ pipeline {
 
         stage('Deploy WAR to Tomcat') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'tomcat-token', usernameVariable: 'TOMCAT_USER', passwordVariable: 'TOMCAT_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'tomcat-creds', usernameVariable: 'TOMCAT_USER', passwordVariable: 'TOMCAT_PASS')]) {
                     sh """
                         curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
                         --upload-file target/hiring.war \\
@@ -88,7 +88,7 @@ pipeline {
 
         stage('Slack Notify') {
             steps {
-                withCredentials([string(credentialsId: 'slack_token', variable: 'SLACK_TOKEN')]) {
+                withCredentials([string(credentialsId: 'slack', variable: 'SLACK_TOKEN')]) {
                     sh '''
                         curl -X POST -H "Authorization: Bearer $SLACK_TOKEN" \
                              -H "Content-type: application/json" \
