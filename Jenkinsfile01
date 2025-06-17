@@ -100,20 +100,4 @@ pipeline {
         }
     }
 
-    post {
-        success {
-            echo 'Pipeline finished successfully.'
-        }
-        failure {
-            echo 'Pipeline failed.'
-            withCredentials([string(credentialsId: 'slack_token', variable: 'SLACK_TOKEN')]) {
-                sh '''
-                    curl -X POST -H "Authorization: Bearer $SLACK_TOKEN" \
-                         -H "Content-type: application/json" \
-                         --data '{"channel":"C04ABC123XY","text":" *Build Failed* - hiring-app"}' \
-                         https://slack.com/api/chat.postMessage
-                '''
-            }
-        }
-    }
-}
+   
