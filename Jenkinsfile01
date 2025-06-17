@@ -2,19 +2,19 @@ pipeline {
     agent any
 
     environment {
-        MAVEN_HOME = tool 'Maven_3.9.4'
+        MAVEN_HOME = tool 'maven3'
         SONAR_SCANNER_HOME = "/opt/sonar_scanner"
-        SONAR_HOST_URL = "http://54.91.71.202:9000"
-        NEXUS_URL = "http://34.201.219.251:8082/repository/maven-snapshot05/"
-        TOMCAT_HOST = "3.88.54.126"
-        TOMCAT_PORT = "8443"
+        SONAR_HOST_URL = "http://3.84.24.116:8081/"
+        NEXUS_URL = "http://3.84.24.116:8081/repository/Maven-snapshot25/"
+        TOMCAT_HOST = "http://3.86.181.54:8080/"
+        TOMCAT_PORT = "8080"
         TOMCAT_WEBAPPS_DIR = "/opt/tomcat/webapps"
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/sripriya7-ande/hiring-app.git'
+                git branch: 'main', url: 'https://github.com/Shirisha95-palla/hiring-app.git'
             }
         }
 
